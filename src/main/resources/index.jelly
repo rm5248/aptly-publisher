@@ -1,0 +1,5 @@
+<?jelly escape-by-default='true'?>
+<div>
+    The Aptly Publisher plugin allows you to publish Debian packages to a 
+ repository that is managed by Aptly.
+</div>
