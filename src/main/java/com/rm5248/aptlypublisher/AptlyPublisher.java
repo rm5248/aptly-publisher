@@ -1,9 +1,11 @@
 package com.rm5248.aptlypublisher;
 
+import com.cloudbees.plugins.credentials.CredentialsMatchers;
 import com.cloudbees.plugins.credentials.CredentialsProvider;
 import com.cloudbees.plugins.credentials.common.StandardCredentials;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import com.cloudbees.plugins.credentials.common.StandardUsernamePasswordCredentials;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
@@ -29,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
+import jenkins.authentication.tokens.api.AuthenticationTokens;
 import jenkins.model.ArtifactManager;
 import jenkins.model.Jenkins;
 import jenkins.tasks.SimpleBuildStep;
@@ -67,11 +70,8 @@ public class AptlyPublisher extends Recorder implements SimpleBuildStep {
 
     @Override
     public void perform(Run run, FilePath workspace, Launcher launcher, TaskListener listener) throws InterruptedException, IOException {
-        List<Run.Artifact> allArtifacts = run.getArtifacts();
-        List<Run.Artifact> toUpload = new ArrayList<>();
         AptlyRepository repositoryToUse = null;
-        int status;
-        
+
         for( AptlyRepository r : getDescriptor().getRepositories() ){
             if( r.getName().equals( getRepositoryName() ) ){
                 repositoryToUse = r;
@@ -85,84 +85,26 @@ public class AptlyPublisher extends Recorder implements SimpleBuildStep {
             return;
         }
         
-        for( Run.Artifact artifact : allArtifacts ){
-            if( artifact.getFileName().indexOf( "-dbg" ) > 0 && m_ignoreDebugPackages ){
-                continue;
-            }
-            
-            if( artifact.getFileName().endsWith( ".deb" ) ){
-                toUpload.add( artifact );
-            }
-        }
+        AptlyHelper helper = new AptlyHelper( repositoryToUse,
+                            run,
+                            launcher,
+                            listener );
         
         if( m_removeOldPackages ){
-            for( Run.Artifact artifact : toUpload ){
-                listener.getLogger().print( "Removing old package " );
-                listener.getLogger().print( artifact.getFileName() );
-                listener.getLogger().println();
-                
-                Launcher.ProcStarter starter =
-                        launcher.launch()
-                        .cmds( "aptly", "repo", "remove", getRepositoryName(), guessPackageNameFromDebFileName( artifact.getFileName() ) )
-                        .stderr( listener.getLogger() )
-                        .stdout( listener.getLogger() );
-                
-                Proc proc  = starter.start();
-                proc.join();
-            }
+            helper.removeOldPackages();
         }
         
-        for( Run.Artifact artifact : toUpload ){
-            String addingPackage = String.format( "Adding package %s to repo %s", 
-                    artifact.getFileName(), getRepositoryName() );
-            listener.getLogger().println( addingPackage );
-
-            Launcher.ProcStarter starter =
-                    launcher.launch()
-                    .cmds( "aptly", "repo", "add", getRepositoryName(), getPathForArtifact( run.getArtifactManager(), artifact ) )
-                    .stderr( listener.getLogger() )
-                    .stdout( listener.getLogger() );
-
-            Proc proc  = starter.start();
-            status = proc.join();
-            if( status != 0 ){
-                String errorMsg = String.format( "Unable to add package(see previous errors)" );
-                 listener.fatalError( errorMsg );
-                return;
-            }
+        if( !helper.addPackagesToRepo( m_ignoreDebugPackages ) ){
+            listener.fatalError( "Can't add packages to repo" );
+            throw new AbortException( "Can't add packages to repo" );
         }
         
-        Launcher.ProcStarter starter =
-            launcher.launch()
-            .cmds( "aptly", "publish", "drop", getRepositoryName() )
-            .stderr( listener.getLogger() )
-            .stdout( listener.getLogger() );
-
-            Proc proc  = starter.start();
-            proc.join();
-            
-//        StandardCredentials creds = CredentialsProvider.findCredentialById(
-//            repositoryToUse.getGpgPassword(),
-//            StandardCredentials.class,
-//            run );
-//        String gpgKey = String.format( "-gpg-key=%s", creds.getDescription().)
-//        Launcher.ProcStarter starter2 =
-//            launcher.launch()
-//            .cmds( "aptly", "publish", "repo", getRepositoryName(), getRepositoryName(),
-//                    "-batch", "-gpg-key=")
-//            .stderr( listener.getLogger() )
-//            .stdout( listener.getLogger() );
-//        Proc proc2  = starter2.start();
-//        proc2.join();
+        helper.dropRepository();
         
-    }
-    
-    private String getPathForArtifact( ArtifactManager am, Run.Artifact artifact ){
-        return Paths.get( am.root().child( artifact.relativePath ).toURI() ).toFile().getAbsolutePath();
-    }
-    
-    private String guessPackageNameFromDebFileName( String debFileName ){
-        return debFileName.substring(0, debFileName.indexOf( '_' ) );
+        if( !helper.publishRepository() ){
+            throw new AbortException( "Can't publish repository" );
+        }
+        
     }
     
     @Symbol( "aptly-publish" )
