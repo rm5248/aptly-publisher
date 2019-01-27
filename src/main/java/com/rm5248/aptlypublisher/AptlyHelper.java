@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import jenkins.model.ArtifactManager;
@@ -106,11 +107,28 @@ class AptlyHelper {
         return debFileName.substring(0, debFileName.indexOf( '_' ) );
     }
     
-    boolean addPackagesToRepo( boolean ignoreDebugPackages ) throws InterruptedException, IOException {
+    private boolean isFileExtensionValid( List<String> validExtensions, String filename ){
+        for( String extension : validExtensions ){
+            if( filename.endsWith( extension ) ){
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    boolean addPackagesToRepo( boolean ignoreDebugPackages, boolean includeSource )
+            throws InterruptedException, IOException {
         int status;
+        List<String> validFileExtensions = new ArrayList<>();
+        
+        validFileExtensions.add( ".deb" );
+        if( includeSource ){
+            validFileExtensions.add( ".dsc" );
+        }
         
         for( Run.Artifact artifact : m_artifacts ){
-            if( !artifact.getFileName().endsWith( ".deb" ) ){
+            if( !isFileExtensionValid( validFileExtensions, artifact.getFileName() ) ){
                 continue;
             }
             

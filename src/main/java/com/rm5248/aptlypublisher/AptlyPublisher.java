@@ -98,7 +98,7 @@ public class AptlyPublisher extends Recorder implements SimpleBuildStep {
             helper.removeOldPackages();
         }
         
-        if( !helper.addPackagesToRepo( m_ignoreDebugPackages ) ){
+        if( !helper.addPackagesToRepo( m_ignoreDebugPackages, m_includeSource ) ){
             listener.fatalError( "Can't add packages to repo" );
             throw new AbortException( "Can't add packages to repo" );
         }
