@@ -161,7 +161,7 @@ class AptlyHelper {
             StandardUsernamePasswordCredentials.class,
             m_run );
         int status;
-        
+
         if( creds == null ){
             String errMsg = String.format( "Can't find credentials with ID %s", 
                     m_repository.getGpgPassword() );
@@ -169,15 +169,14 @@ class AptlyHelper {
             return false;
         }
         
-        m_listener.getLogger().println( creds.getUsername() );
-        m_listener.getLogger().println( creds.getPassword() );
-        
         String gpgKey = String.format( "-gpg-key=%s", creds.getUsername() );
         String password = String.format( "-passphrase=%s", creds.getPassword() );
         Launcher.ProcStarter starter2 =
             m_launcher.launch()
             .cmds( "aptly", "publish", "repo", "-batch", gpgKey, password,
                     m_repository.getName(), m_repository.getName() )
+            .masks( false, false, false, false, false, true,
+                    false, false )
             .stderr( m_listener.getLogger() )
             .stdout( m_listener.getLogger() );
         Proc proc2  = starter2.start();
