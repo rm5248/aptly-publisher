@@ -99,7 +99,7 @@ class AptlyHelper {
     void dropRepository() throws InterruptedException, IOException {
         Launcher.ProcStarter starter =
             m_launcher.launch()
-            .cmds( "aptly", "publish", "drop", m_repository.getName() )
+            .cmds( "aptly", "publish", "drop", m_repository.getDefaultDistribution(), m_repository.getName() )
             .stderr( m_listener.getLogger() )
             .stdout( m_listener.getLogger() );
 
