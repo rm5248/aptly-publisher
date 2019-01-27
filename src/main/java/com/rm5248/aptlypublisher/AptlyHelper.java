@@ -6,10 +6,12 @@ import hudson.Launcher;
 import hudson.Proc;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Scanner;
 import jenkins.model.ArtifactManager;
 
 /**
@@ -32,6 +34,52 @@ class AptlyHelper {
         m_launcher = launcher;
         m_listener = listener;
         m_artifacts = run.getArtifacts();
+    }
+    
+    boolean createRepoIfNeeded() throws InterruptedException, IOException {
+        int status;
+        boolean found = false;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        
+        Launcher.ProcStarter starter =
+            m_launcher.launch()
+            .cmds( "aptly", "repo", "list", "-raw" )
+            .stdout( bos );
+        Proc proc  = starter.start();
+        status = proc.join();
+        
+        if( status != 0 ){
+            /* something has gone terribly wrong */
+            return false;
+        }
+        
+        try( Scanner scan = new Scanner( new String( bos.toByteArray(), "UTF-8" ) ) ){
+            while( scan.hasNextLine() ){
+                String line = scan.nextLine();
+                
+                if( line.trim().equals( m_repository.getName() ) ){
+                    found = true;
+                }
+            }
+        }
+        
+        if( !found ){
+            /* Try to create */
+            String comment = String.format( "-comment=%s", m_repository.getComment() );
+            String distribution = String.format( "-distribution=%s", m_repository.getDefaultDistribution() );
+            starter = m_launcher.launch()
+                .cmds( "aptly", "repo", "create", comment, distribution, m_repository.getName() )
+                .stdout( m_listener.getLogger() )
+                .stderr( m_listener.getLogger() );
+            proc  = starter.start();
+            status = proc.join();
+            
+            if( status != 0 ){
+                return false;
+            }
+        }
+        
+        return true;
     }
     
     void removeOldPackages() throws InterruptedException, IOException {

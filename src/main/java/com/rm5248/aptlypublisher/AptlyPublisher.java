@@ -90,6 +90,10 @@ public class AptlyPublisher extends Recorder implements SimpleBuildStep {
                             launcher,
                             listener );
         
+        if( !helper.createRepoIfNeeded() ){
+            throw new AbortException( "Unable to create aptly repository: is it installed?" );
+        }
+        
         if( m_removeOldPackages ){
             helper.removeOldPackages();
         }
