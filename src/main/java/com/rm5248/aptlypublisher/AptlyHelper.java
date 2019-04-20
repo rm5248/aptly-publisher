@@ -85,7 +85,8 @@ class AptlyHelper {
     
     void removeOldPackages() throws InterruptedException, IOException {
         for( Run.Artifact artifact : m_artifacts ){
-            if( !artifact.getFileName().endsWith( ".deb" ) ){
+            if( !artifact.getFileName().endsWith( ".deb" ) &&
+                    !artifact.getFileName().endsWith( ".tar.xz" ) ){
                 continue;
             }
             String packageNameToRemove = guessPackageNameFromDebFileName( artifact.getFileName() );
