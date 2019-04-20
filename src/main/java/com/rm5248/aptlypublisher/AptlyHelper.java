@@ -83,6 +83,21 @@ class AptlyHelper {
         return true;
     }
     
+    private String extractArchFromPackageName( String packageName ){
+        int idxUnderscore = packageName.lastIndexOf( '_' );
+        int idxDeb = packageName.lastIndexOf( ".deb" );
+        
+        if( idxUnderscore < 0 ){
+            return null;
+        }
+        
+        if( idxDeb < 0 ){
+            return null;
+        }
+        
+        return packageName.substring( idxUnderscore + 1, idxDeb );
+    }
+    
     void removeOldPackages() throws InterruptedException, IOException {
         for( Run.Artifact artifact : m_artifacts ){
             if( !artifact.getFileName().endsWith( ".deb" ) &&
@@ -90,6 +105,10 @@ class AptlyHelper {
                 continue;
             }
             String packageNameToRemove = guessPackageNameFromDebFileName( artifact.getFileName() );
+            String arch = extractArchFromPackageName( artifact.getFileName() );
+            if( arch != null ){
+                packageNameToRemove += "{" + arch + "}";
+            }
             String debugInfo = String.format( "Removing old package %s", packageNameToRemove );
             m_listener.getLogger().println( debugInfo );
 
