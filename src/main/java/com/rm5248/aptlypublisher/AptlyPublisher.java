@@ -111,7 +111,7 @@ public class AptlyPublisher extends Recorder implements SimpleBuildStep {
         
     }
     
-    @Symbol( "aptly-publish" )
+    @Symbol( "aptlyPublish" )
     @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Publisher> {
         
