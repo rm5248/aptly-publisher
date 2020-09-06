@@ -13,3 +13,8 @@ you want to publish must have been archived first.  Works well with the [Debian 
 6. Add a post-build step, 'Publish debian packages via Aptly'
 7. Select the repository that you chose in step 4.
 8. Build!
+
+
+# TODO
+
+1. Need to figure out a more secure way of storing the keys.  Ideally, the private key should be on a separate machine that we simply talk to along the lines of "here go sign this for me".  Something similar with agent forwarding: https://mlohr.com/gpg-agent-forwarding/
